@@ -1,32 +1,38 @@
 const five = require('johnny-five');
 const arduino = new five.Board();
 
-const upperByte = byte => (byte > 127 ? -byte + 128 : byte);
-const lowerByte = byte => (0.25 * byte) / 64;
-
-function calcTemp(bytes) {
-  console.log('Bytes read: ', bytes);
-  const temperature = bytes.reduce(
-    (prev, byte, index) =>
-      index === 1 ? lowerByte(byte) + prev : upperByte(byte) + prev,
-    0,
-  );
-  console.log(temperature);
-}
-
 arduino.on('ready', function() {
-  const servo = new five.Servo(9);
-  this.i2cConfig();
-  // according to Datasheet this device by default sends data
-  // on this address 0X68. The temperature registers are 11h
-  // and 12h, where 11h is the decimal and 12h is the fractional part
-  this.i2cReadOnce(0x68, 0x11, 2, calcTemp);
-  // grab the current content -> TODO:fix later;
-  const ctx = this;
+  const relay = new five.Relay(10);
+  const motion = new five.Motion(7);
+  // from the REPL by typing commands, eg.
+  //
+  // relay.on();
+  //
+  // relay.off();
+  //
+
+  // "calibrated" occurs once, at the beginning of a session,
+  motion.on('calibrated', function() {
+    console.log('calibrated motion sensor', Date.now());
+  });
+
+  // "motionstart" events are fired when the "calibrated"
+  // proximal area is disrupted, generally by some form of movement
+  motion.on('motionstart', function() {
+    console.log('motionstart', Date.now());
+    relay.on();
+  });
+
+  // "motionend" events are fired following a "motionstart" event
+  // when no movement has occurred in X ms
+  motion.on('motionend', function() {
+    console.log('motionend', Date.now());
+    setTimeout(() => {
+      relay.off();
+    }, 1000);
+  });
+
   this.repl.inject({
-    servo,
-    temp: function() {
-      ctx.i2cReadOnce(0x68, 0x11, 2, calcTemp);
-    },
+    relay: relay,
   });
 });
