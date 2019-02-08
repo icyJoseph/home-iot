@@ -1,38 +1,24 @@
 const five = require('johnny-five');
-const arduino = new five.Board();
+const arduino = new five.Board({
+  port: '/dev/rfcomm0',
+});
+
+function logger(thermometer, soil) {
+  const temp = `temperature: ${thermometer.celsius} °C`;
+  const humVal = 100 - (soil.value * 100) / 1023;
+  const hum = `humidity: ${humVal.toFixed(2)}%`;
+  console.log(temp, hum);
+}
 
 arduino.on('ready', function() {
-  const relay = new five.Relay(10);
-  const motion = new five.Motion(7);
-  // from the REPL by typing commands, eg.
-  //
-  // relay.on();
-  //
-  // relay.off();
-  //
-
-  // "calibrated" occurs once, at the beginning of a session,
-  motion.on('calibrated', function() {
-    console.log('calibrated motion sensor', Date.now());
+  const thermometer = new five.Thermometer({
+    controller: 'DS18B20',
+    pin: 2,
+    threshold: 100,
   });
 
-  // "motionstart" events are fired when the "calibrated"
-  // proximal area is disrupted, generally by some form of movement
-  motion.on('motionstart', function() {
-    console.log('motionstart', Date.now());
-    relay.on();
-  });
+  const soil = new five.Sensor({pin: 'A0', freq: 250, threshold: 20});
 
-  // "motionend" events are fired following a "motionstart" event
-  // when no movement has occurred in X ms
-  motion.on('motionend', function() {
-    console.log('motionend', Date.now());
-    setTimeout(() => {
-      relay.off();
-    }, 1000);
-  });
-
-  this.repl.inject({
-    relay: relay,
-  });
+  thermometer.on('change', () => logger(thermometer, soil));
+  soil.on('change', () => logger(thermometer, soil));
 });
