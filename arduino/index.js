@@ -12,39 +12,31 @@ const state = {
   hum: null,
   acc: [],
   setState({temp, hum}) {
-    onDelta(temp, this.temp, 1, this.updateTemp.bind(this));
-    onDelta(hum, this.hum, 1, this.updateHum.bind(this));
-  },
-  updateTemp(temp) {
     this.temp = temp;
-    this.updateAcc();
-  },
-  updateHum(hum) {
     this.hum = hum;
-    this.updateAcc();
+    return this.updateAcc();
   },
   updateAcc() {
     const {temp, hum, acc} = this;
     this.acc = [...acc, {temp, hum, timestamp: Date.now()}];
-    if (this.acc.length === 3) {
+    if (this.acc.length === 100) {
       // save acc and clear it
-      const fileName = path.resolve(__dirname, '../logs', `${Date.now()}.json`);
-
-      fs.writeFile(fileName, JSON.stringify(this.acc), err => {
-        if (err) return console.log(err);
-        console.log(`Saved: ${fileName}`);
-        this.acc = [];
-      });
+      flushOut(this.acc);
+      this.acc = [];
     }
+    return null;
   },
 };
 
-function onDelta(curr, prev, delta, callback) {
-  if (prev === null) return callback(curr);
-  return Math.abs(curr - prev) >= delta && callback(curr);
+function flushOut(data) {
+  const fileName = path.resolve(__dirname, '../logs', `${Date.now()}.json`);
+  return fs.writeFile(fileName, JSON.stringify(data), err => {
+    if (err) return console.log(err);
+    return console.log(`Saved: ${fileName}`);
+  });
 }
 
-function toState({celsius}, soil) {
+function updateState({celsius}, soil) {
   const humVal = 100 - (soil.value * 100) / 1023;
   return state.setState({temp: celsius, hum: humVal});
 }
@@ -55,11 +47,17 @@ arduino.on('ready', function() {
     pin: 2,
     freq: 250,
   });
-
   const soil = new five.Sensor({pin: 'A0', freq: 250, threshold: 20});
 
-  const onChange = () => toState(thermometer, soil);
+  const onChange = () => updateState(thermometer, soil);
 
   thermometer.on('change', onChange);
   soil.on('change', onChange);
+
+  arduino.on('exit', function() {
+    flushOut(state.acc);
+  });
+  process.on('exit', function() {
+    flushOut(state.acc);
+  });
 });
