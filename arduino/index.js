@@ -1,6 +1,13 @@
 const fs = require('fs');
 const path = require('path');
 const five = require('johnny-five');
+const io = require('socket.io')();
+
+io.on('connection', client => {
+  console.log('New client', client.handshake.headers.origin);
+});
+
+io.listen(1337);
 
 const arduino = new five.Board({
   //  port: '/dev/rfcomm0',
@@ -36,10 +43,7 @@ function flushOut(data) {
   });
 }
 
-function updateState({celsius}, soil) {
-  const humVal = 100 - (soil.value * 100) / 1023;
-  return state.setState({temp: celsius, hum: humVal});
-}
+const scaleHum = ({value}) => 100 - (value * 100) / 1023;
 
 arduino.on('ready', function() {
   console.log('Arduino Ready');
@@ -50,7 +54,15 @@ arduino.on('ready', function() {
   });
   const soil = new five.Sensor({pin: 'A0', freq: 250, threshold: 20});
 
-  const onChange = () => updateState(thermometer, soil);
+  const onChange = () => {
+    const hum = scaleHum(soil);
+    const {celsius: temp} = thermometer;
+    const payload = {temp, hum};
+    // emit socket io event
+    io.emit('change', {...payload, timestamp: Date.now()});
+    // set the state
+    return state.setState(payload);
+  };
 
   thermometer.on('change', onChange);
   soil.on('change', onChange);
