@@ -1,33 +1,49 @@
 import React, { Component } from "react";
 import io from "socket.io-client";
-
-import logo from "./logo.svg";
+import axios from "axios";
+import Graph from "./components/Graph";
 import "./App.css";
 
+const socketEP = "http://192.168.0.3:1337";
+const dataEP = "http://192.168.0.3:9191";
+
 class App extends Component {
+  state = { historic: [], live: [], socketStatus: false };
+
   socket = null;
+
   componentDidMount() {
-    this.socket = io("http://192.168.0.3:1337");
-    this.socket.on("connect", () => console.log("connected"));
-    this.socket.on("change", payload => console.log(payload));
+    this.socket = io(socketEP);
+    this.socket.on("connect", () => this.setState({ socketStatus: true }));
+    this.socket.on("change", ({ timestamp: name, ...rest }) =>
+      this.setState(({ live: prevLive }) => {
+        const live =
+          prevLive.length === 10
+            ? prevLive.slice(1).concat({ ...rest, name })
+            : prevLive.concat({ ...rest, name });
+        return {
+          live
+        };
+      })
+    );
+    return axios
+      .get(dataEP)
+      .then(({ data: historic }) => this.setState({ historic }));
   }
+
   render() {
+    const { socketStatus, live } = this.state;
     return (
       <div className="App">
         <header className="App-header">
-          <img src={logo} className="App-logo" alt="logo" />
           <p>
-            Edit <code>src/App.js</code> and save to reload.
+            The socket is{" "}
+            <code>{socketStatus ? "connected" : "disconnected"}</code>.
           </p>
-          <a
-            className="App-link"
-            href="https://reactjs.org"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Learn React
-          </a>
         </header>
+        <div>
+          <Graph data={live} />
+        </div>
       </div>
     );
   }
