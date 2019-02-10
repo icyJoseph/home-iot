@@ -17,7 +17,7 @@ app.get('/', (req, res) => {
       const acc = await prev;
       const data = await new Promise(resolve =>
         fs.readFile(`${logs}/${file}`, 'utf8', (err, data) => {
-          resolve(JSON.parse(data));
+          return err || !data ? resolve([]) : resolve(JSON.parse(data));
         }),
       );
       return [...acc, data];
