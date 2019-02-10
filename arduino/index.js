@@ -3,7 +3,7 @@ const path = require('path');
 const five = require('johnny-five');
 
 const arduino = new five.Board({
-  port: '/dev/rfcomm0',
+  //  port: '/dev/rfcomm0',
   repl: false,
 });
 
@@ -19,7 +19,7 @@ const state = {
   updateAcc() {
     const {temp, hum, acc} = this;
     this.acc = [...acc, {temp, hum, timestamp: Date.now()}];
-    if (this.acc.length === 100) {
+    if (this.acc.length === 50) {
       // save acc and clear it
       flushOut(this.acc);
       this.acc = [];
@@ -42,6 +42,7 @@ function updateState({celsius}, soil) {
 }
 
 arduino.on('ready', function() {
+  console.log('Arduino Ready');
   const thermometer = new five.Thermometer({
     controller: 'DS18B20',
     pin: 2,
@@ -55,9 +56,9 @@ arduino.on('ready', function() {
   soil.on('change', onChange);
 
   arduino.on('exit', function() {
-    flushOut(state.acc);
+    return state.acc.length > 0 ? flushOut(state.acc) : null;
   });
   process.on('exit', function() {
-    flushOut(state.acc);
+    return state.acc.length > 0 ? flushOut(state.acc) : null;
   });
 });
