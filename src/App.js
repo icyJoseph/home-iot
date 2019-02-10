@@ -1,8 +1,16 @@
-import React, { Component } from 'react';
-import logo from './logo.svg';
-import './App.css';
+import React, { Component } from "react";
+import io from "socket.io-client";
+
+import logo from "./logo.svg";
+import "./App.css";
 
 class App extends Component {
+  socket = null;
+  componentDidMount() {
+    this.socket = io("http://192.168.0.3:1337");
+    this.socket.on("connect", () => console.log("connected"));
+    this.socket.on("change", payload => console.log(payload));
+  }
   render() {
     return (
       <div className="App">
