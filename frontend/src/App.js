@@ -18,7 +18,7 @@ class App extends Component {
     this.socket.on("change", ({ timestamp: name, ...rest }) =>
       this.setState(({ live: prevLive }) => {
         const live =
-          prevLive.length === 10
+          prevLive.length === 50
             ? prevLive.slice(1).concat({ ...rest, name })
             : prevLive.concat({ ...rest, name });
         return {

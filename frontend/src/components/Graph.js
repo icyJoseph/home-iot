@@ -8,13 +8,14 @@ export function Graph({ data }) {
   const keys = Object.keys(first).filter(key => key !== "name");
 
   return (
-    <LineChart width={400} height={400} data={data}>
+    <LineChart width={600} height={400} data={data}>
       <XAxis dataKey="name" />
       <YAxis />
       {keys.map((key, index) => {
         return (
           <Line
             key={key}
+            dot={false}
             type="monotone"
             dataKey={key}
             stroke={strokes[index]}
